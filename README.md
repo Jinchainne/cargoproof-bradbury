@@ -26,7 +26,8 @@ The contract is [`contracts/cargoproof.py`](contracts/cargoproof.py). The import
 cd frontend
 npm install
 copy .env.example .env.local
-# set VITE_CONTRACT_ADDRESS to the deployed Bradbury CargoProof address
+# deployed Bradbury address: 0xA8fBbdFa6F901c09e50cD342C6917BD1CB3FE944
+# set VITE_CONTRACT_ADDRESS to the same address in .env.local
 npm run dev
 ```
 
@@ -34,7 +35,7 @@ Open the Vite URL, connect a Bradbury wallet, then follow the numbered workflow.
 
 ## Deploy to Bradbury
 
-Deploy `contracts/cargoproof.py` in GenLayer Studio/CLI using the pinned `py-genlayer` dependency at the top of the file. After deployment, copy the contract address into `frontend/.env.local`. Add the Bradbury Explorer address to the project submission as contract evidence. Keep the deployed source and repository commit paired so reviewers can reproduce the exact code.
+The current Bradbury deployment matches this repository source: [`0xA8fBbdFa6F901c09e50cD342C6917BD1CB3FE944`](https://explorer-bradbury.genlayer.com/address/0xA8fBbdFa6F901c09e50cD342C6917BD1CB3FE944). Deployment transaction: [`0xc9d492afac4495658a3f11eab0b14565d0552aa8950dc05d2ff4179c6871bfa4`](https://explorer-bradbury.genlayer.com/tx/0xc9d492afac4495658a3f11eab0b14565d0552aa8950dc05d2ff4179c6871bfa4). The contract was deployed from `contracts/cargoproof.py` using the pinned `py-genlayer` dependency at the top of the file. The Vercel production environment uses the same address. Keep the deployed source and repository commit paired so reviewers can reproduce the exact code.
 
 ## Test the project
 
