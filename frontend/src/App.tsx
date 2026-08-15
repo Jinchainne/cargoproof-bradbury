@@ -41,9 +41,23 @@ export default function App() {
     if (!clientReady) throw new Error("Set VITE_CONTRACT_ADDRESS to the deployed CargoProof contract first.");
     if (!account) throw new Error("Connect the wallet first.");
     setTx({ state: "pending", message: `Submitting ${name} to Bradbury…` });
-    const client: any = writeClient(account as `0x${string}`);
-    const hash = await sendShipmentAction(client, CONTRACT_ADDRESS, name, args, BigInt(value));
-    await waitForBradbury(client, String(hash));
+    const submitOnce = async () => {
+      // Recreate the client for every attempt so a stale wallet nonce is not reused.
+      const freshClient: any = writeClient(account as `0x${string}`);
+      const hash = await sendShipmentAction(freshClient, CONTRACT_ADDRESS, name, args, BigInt(value));
+      await waitForBradbury(freshClient, String(hash));
+      return String(hash);
+    };
+    let hash: string;
+    try {
+      hash = await submitOnce();
+    } catch (firstError: any) {
+      const detail = firstError?.message || String(firstError);
+      if (!/nonce.*(not consistent|too low|already used)|replacement transaction underpriced/i.test(detail)) throw firstError;
+      setTx({ state: "pending", message: "Wallet nonce was stale. Refreshing Bradbury nonce and retrying once…" });
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      hash = await submitOnce();
+    }
     setTx({ state: "success", message: `${name} accepted on Bradbury.`, hash: String(hash) });
     // Bind the UI to the post-execution state, not to a guessed local result.
     const latest_state = await loadShipment(form.shipmentId);
@@ -80,11 +94,12 @@ export default function App() {
   }
 
   const addressLink = clientReady ? `${EXPLORER_URL}/address/${CONTRACT_ADDRESS}` : "#";
+  const isBusy = tx.state === "pending";
 
   return <main className="shell">
     <header className="hero">
       <div className="brand"><img src="/cargoproof-logo.png" alt="CargoProof Bradbury logo" /><div><span className="eyebrow">GENLAYER BRADBURY · INDUSTRY WORKFLOW</span><h1>CargoProof</h1><p>Freight delivery escrow where public evidence and validator consensus decide the payout.</p></div></div>
-      <div className="hero-actions"><button onClick={connect}>{account ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet"}</button><a href={addressLink} target="_blank">Contract explorer ↗</a></div>
+      <div className="hero-actions"><button disabled={isBusy} onClick={connect}>{account ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet"}</button><a href={addressLink} target="_blank">Contract explorer ↗</a></div>
     </header>
 
     {!clientReady && <div className="notice">Deployment address is not configured yet. Deploy <code>contracts/cargoproof.py</code> to Bradbury, then set <code>VITE_CONTRACT_ADDRESS</code> in <code>frontend/.env.local</code>.</div>}
@@ -95,11 +110,11 @@ export default function App() {
     </section>
 
     <section className="grid">
-      <form className="card" onSubmit={(e) => action(e, "create_shipment", [form.shipmentId, form.carrier, form.cargo, form.origin, form.destination, Number(form.window), form.bookingUrl], form.escrow)}><div className="card-head"><span className="number">01</span><div><h2>Create shipment</h2><p>Buyer action · escrow is sent with this transaction</p></div></div><div className="fields"><label>Shipment ID<input value={form.shipmentId} onChange={(e) => set("shipmentId", e.target.value)} /></label><label>Carrier address<input required placeholder="0x…" value={form.carrier} onChange={(e) => set("carrier", e.target.value)} /></label><label>Cargo description<input value={form.cargo} onChange={(e) => set("cargo", e.target.value)} /></label><label>Delivery window (blocks)<input type="number" min="1" max="100000" value={form.window} onChange={(e) => set("window", e.target.value)} /></label><label>Origin<input value={form.origin} onChange={(e) => set("origin", e.target.value)} /></label><label>Destination<input value={form.destination} onChange={(e) => set("destination", e.target.value)} /></label><label className="wide">Booking / policy evidence URL<input type="url" required value={form.bookingUrl} onChange={(e) => set("bookingUrl", e.target.value)} /></label><label>Escrow (GEN base units)<input value={form.escrow} onChange={(e) => set("escrow", e.target.value)} /><small>Use the smallest test value accepted by your wallet; this field is converted to wei-like base units.</small></label></div><button className="primary">Create and lock escrow</button></form>
+      <form className="card" onSubmit={(e) => action(e, "create_shipment", [form.shipmentId, form.carrier, form.cargo, form.origin, form.destination, Number(form.window), form.bookingUrl], form.escrow)}><div className="card-head"><span className="number">01</span><div><h2>Create shipment</h2><p>Buyer action · escrow is sent with this transaction</p></div></div><div className="fields"><label>Shipment ID<input value={form.shipmentId} onChange={(e) => set("shipmentId", e.target.value)} /></label><label>Carrier address<input required placeholder="0x…" value={form.carrier} onChange={(e) => set("carrier", e.target.value)} /></label><label>Cargo description<input value={form.cargo} onChange={(e) => set("cargo", e.target.value)} /></label><label>Delivery window (blocks)<input type="number" min="1" max="100000" value={form.window} onChange={(e) => set("window", e.target.value)} /></label><label>Origin<input value={form.origin} onChange={(e) => set("origin", e.target.value)} /></label><label>Destination<input value={form.destination} onChange={(e) => set("destination", e.target.value)} /></label><label className="wide">Booking / policy evidence URL<input type="url" required value={form.bookingUrl} onChange={(e) => set("bookingUrl", e.target.value)} /></label><label>Escrow (GEN base units)<input value={form.escrow} onChange={(e) => set("escrow", e.target.value)} /><small>Use the smallest test value accepted by your wallet; this field is converted to wei-like base units.</small></label></div><button disabled={isBusy} className="primary">Create and lock escrow</button></form>
 
-      <div className="card"><div className="card-head"><span className="number">02</span><div><h2>Carrier submits delivery</h2><p>Carrier action · only the recorded carrier can call this</p></div></div><form onSubmit={(e) => action(e, "submit_delivery", [form.shipmentId, form.deliveryUrl])}><label>Delivery proof URL<input type="url" required value={form.deliveryUrl} onChange={(e) => set("deliveryUrl", e.target.value)} /></label><button className="primary">Mark delivered</button></form><div className="divider" /><div className="card-head"><span className="number">03</span><div><h2>Buyer chooses outcome</h2><p>Confirm pays carrier; dispute starts neutral adjudication.</p></div></div><div className="button-row"><button onClick={(e) => action(e, "confirm_delivery", [form.shipmentId])}>Confirm & pay carrier</button><button className="danger" onClick={(e) => action(e, "dispute_delivery", [form.shipmentId, form.counterUrl, form.reason])}>Open dispute</button></div><label>Counter-evidence URL<input type="url" value={form.counterUrl} onChange={(e) => set("counterUrl", e.target.value)} /></label><label>Dispute reason<textarea value={form.reason} onChange={(e) => set("reason", e.target.value)} /></label></div>
+      <div className="card"><div className="card-head"><span className="number">02</span><div><h2>Carrier submits delivery</h2><p>Carrier action · only the recorded carrier can call this</p></div></div><form onSubmit={(e) => action(e, "submit_delivery", [form.shipmentId, form.deliveryUrl])}><label>Delivery proof URL<input type="url" required value={form.deliveryUrl} onChange={(e) => set("deliveryUrl", e.target.value)} /></label><button disabled={isBusy} className="primary">Mark delivered</button></form><div className="divider" /><div className="card-head"><span className="number">03</span><div><h2>Buyer chooses outcome</h2><p>Confirm pays carrier; dispute starts neutral adjudication.</p></div></div><div className="button-row"><button disabled={isBusy} onClick={(e) => action(e, "confirm_delivery", [form.shipmentId])}>Confirm & pay carrier</button><button disabled={isBusy} className="danger" onClick={(e) => action(e, "dispute_delivery", [form.shipmentId, form.counterUrl, form.reason])}>Open dispute</button></div><label>Counter-evidence URL<input type="url" value={form.counterUrl} onChange={(e) => set("counterUrl", e.target.value)} /></label><label>Dispute reason<textarea value={form.reason} onChange={(e) => set("reason", e.target.value)} /></label></div>
 
-      <div className="card"><div className="card-head"><span className="number">04</span><div><h2>Adjudicate the dispute</h2><p>Either shipment party can trigger validator consensus.</p></div></div><p className="explain">Validators independently fetch the three HTTPS sources. Their comparative principle requires the delivered decision to agree and the rationale to address the evidence origins and route.</p><button className="primary" onClick={(e) => action(e, "adjudicate", [form.shipmentId])}>Run GenLayer adjudication</button><div className="divider" /><div className="card-head"><span className="number">05</span><div><h2>Read the settlement</h2><p>Inspect the exact on-chain state after any step.</p></div></div><div className="button-row"><button onClick={() => loadShipment()}>Read shipment</button><button className="danger" onClick={(e) => action(e, "timeout_shipment", [form.shipmentId])}>Refund after timeout</button></div>{shipment && <pre className="result">{JSON.stringify(shipment, null, 2)}</pre>}</div>
+      <div className="card"><div className="card-head"><span className="number">04</span><div><h2>Adjudicate the dispute</h2><p>Either shipment party can trigger validator consensus.</p></div></div><p className="explain">Validators independently fetch the three HTTPS sources. Their comparative principle requires the delivered decision to agree and the rationale to address the evidence origins and route.</p><button disabled={isBusy} className="primary" onClick={(e) => action(e, "adjudicate", [form.shipmentId])}>Run GenLayer adjudication</button><div className="divider" /><div className="card-head"><span className="number">05</span><div><h2>Read the settlement</h2><p>Inspect the exact on-chain state after any step.</p></div></div><div className="button-row"><button disabled={isBusy} onClick={() => loadShipment()}>Read shipment</button><button disabled={isBusy} className="danger" onClick={(e) => action(e, "timeout_shipment", [form.shipmentId])}>Refund after timeout</button></div>{shipment && <pre className="result">{JSON.stringify(shipment, null, 2)}</pre>}</div>
     </section>
     <footer>Built for reproducible Bradbury review · <a href="https://github.com/Jinchainne/cargoproof-bradbury" target="_blank">repository</a> · evidence URLs remain visible in the adjudication state.</footer>
   </main>;
