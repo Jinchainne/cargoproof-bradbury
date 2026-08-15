@@ -1,6 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import { CONTRACT_ADDRESS, EXPLORER_URL, readClient, waitForBradbury, writeClient } from "./genlayer";
-import { readShipment, sendShipmentAction } from "./workflow";
+import { listShipmentIds, readShipment, sendShipmentAction } from "./workflow";
 
 type Shipment = Record<string, any>;
 type Tx = { state: "idle" | "pending" | "success" | "error"; message?: string; hash?: string };
@@ -53,7 +53,14 @@ export default function App() {
   async function loadShipment(id = form.shipmentId): Promise<Shipment | null> {
     if (!clientReady || !id) return null;
     try {
-      const raw = await readShipment(readClient() as any, CONTRACT_ADDRESS, id);
+      const reader: any = readClient();
+      const listed = await listShipmentIds(reader, CONTRACT_ADDRESS);
+      const ids = Array.isArray(listed) ? listed.map((item) => String(item).trim().toLowerCase()) : [];
+      if (!ids.includes(id.trim().toLowerCase())) {
+        setTx({ state: "error", message: `No shipment found for “${id}”. Create this shipment first, then read it again.` });
+        return null;
+      }
+      const raw = await readShipment(reader, CONTRACT_ADDRESS, id);
       const latest = asJson(raw);
       setShipment(latest);
       return latest;

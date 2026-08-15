@@ -43,6 +43,7 @@ test("frontend is a real client for every contract action", () => {
   assert.match(app + client, /writeContract/);
   assert.match(app, /waitForBradbury/);
   assert.match(app, /No shipment found/);
+  assert.match(client, /list_shipments/);
   assert.match(client, /shipmentId\.trim\(\)\.toLowerCase\(\)/);
 });
 
