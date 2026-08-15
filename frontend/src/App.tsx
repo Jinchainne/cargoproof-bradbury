@@ -57,7 +57,14 @@ export default function App() {
       const latest = asJson(raw);
       setShipment(latest);
       return latest;
-    } catch (e: any) { setTx({ state: "error", message: `Read failed: ${e?.message || String(e)}` }); return null; }
+    } catch (e: any) {
+      const detail = e?.message || String(e);
+      const message = /unknown shipment/i.test(detail)
+        ? `No shipment found for “${id}”. Create this shipment first, then read it again.`
+        : `Read failed: ${detail}`;
+      setTx({ state: "error", message });
+      return null;
+    }
   }
 
   async function action(event: FormEvent, name: string, args: any[], value = "0") {
