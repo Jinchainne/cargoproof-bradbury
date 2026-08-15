@@ -1,6 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import { CONTRACT_ADDRESS, EXPLORER_URL, readClient, waitForBradbury, writeClient } from "./genlayer";
-import { readShipment, sendShipmentAction } from "../../src/workflow";
+import { readShipment, sendShipmentAction } from "./workflow";
 
 type Shipment = Record<string, any>;
 type Tx = { state: "idle" | "pending" | "success" | "error"; message?: string; hash?: string };
