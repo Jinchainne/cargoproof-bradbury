@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 const root = join(import.meta.dirname, "..");
@@ -49,4 +49,10 @@ test("frontend is a real client for every contract action", () => {
 
 test("README gives stewards a reproducible industry workflow", () => {
   for (const phrase of ["Buyer creates a shipment", "Carrier submits delivery evidence", "GenLayer adjudicates disputed claims", "neutral timeout", "npm run dev", "npm test"]) assert.match(readme, new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"));
+});
+
+test("project branding ships with the requested CargoProof logo", async () => {
+  const logo = await stat(join(root, "frontend", "public", "cargoproof-logo.png"));
+  assert.ok(logo.size > 1000);
+  assert.match(app, /cargoproof-logo\.png/);
 });

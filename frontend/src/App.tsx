@@ -83,7 +83,7 @@ export default function App() {
 
   return <main className="shell">
     <header className="hero">
-      <div><span className="eyebrow">GENLAYER BRADBURY · INDUSTRY WORKFLOW</span><h1>CargoProof</h1><p>Freight delivery escrow where public evidence and validator consensus decide the payout.</p></div>
+      <div className="brand"><img src="/cargoproof-logo.png" alt="CargoProof Bradbury logo" /><div><span className="eyebrow">GENLAYER BRADBURY · INDUSTRY WORKFLOW</span><h1>CargoProof</h1><p>Freight delivery escrow where public evidence and validator consensus decide the payout.</p></div></div>
       <div className="hero-actions"><button onClick={connect}>{account ? `${account.slice(0, 6)}…${account.slice(-4)}` : "Connect wallet"}</button><a href={addressLink} target="_blank">Contract explorer ↗</a></div>
     </header>
 
