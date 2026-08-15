@@ -7,6 +7,7 @@ const root = join(import.meta.dirname, "..");
 const contract = await readFile(join(root, "contracts", "cargoproof.py"), "utf8");
 const app = await readFile(join(root, "frontend", "src", "App.tsx"), "utf8");
 const client = await readFile(join(root, "src", "workflow.ts"), "utf8");
+const styles = await readFile(join(root, "frontend", "src", "styles.css"), "utf8");
 const readme = await readFile(join(root, "README.md"), "utf8");
 
 test("contract exposes the complete payout state machine", () => {
@@ -55,4 +56,5 @@ test("project branding ships with the requested CargoProof logo", async () => {
   const logo = await stat(join(root, "frontend", "public", "cargoproof-logo.png"));
   assert.ok(logo.size > 1000);
   assert.match(app, /cargoproof-logo\.png/);
+  assert.match(styles, /width:150px;height:150px;padding:0;background:transparent/);
 });
