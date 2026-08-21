@@ -167,7 +167,10 @@ Return JSON only: {{"delivered": true or false, "rationale": "specific evidence-
                 raw = json.loads(raw[raw.find("{"):raw.rfind("}") + 1])
             if not isinstance(raw, dict) or "delivered" not in raw:
                 raise gl.vm.UserError("[LLM_ERROR] Invalid adjudication")
-            return {"delivered": bool(raw["delivered"]), "rationale": str(raw.get("rationale", ""))[:500]}
+            verdict = raw["delivered"]
+            if not isinstance(verdict, bool):
+                raise gl.vm.UserError("[LLM_ERROR] Verdict must be a JSON boolean")
+            return {"delivered": verdict, "rationale": str(raw.get("rationale", ""))[:500]}
 
         def validator_fn(leader_result: gl.vm.Result) -> bool:
             if not isinstance(leader_result, gl.vm.Return):

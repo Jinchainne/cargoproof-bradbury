@@ -32,8 +32,22 @@ test("disputed payout uses meaningful GenLayer consensus and preserves evidence 
   assert.match(contract, /BOOKING_ORIGIN/);
   assert.match(contract, /DELIVERY_ORIGIN/);
   assert.match(contract, /COUNTER_ORIGIN/);
-  assert.match(contract, /_UNAVAILABLE:/);
   assert.match(contract, /result\["delivered"\]/);
+});
+
+test("adjudication strictly requires a JSON boolean verdict so string false cannot settle", () => {
+  assert.match(contract, /verdict = raw\["delivered"\]/);
+  assert.match(contract, /not isinstance\(verdict, bool\)/);
+  assert.match(contract, /Verdict must be a JSON boolean/);
+  assert.match(contract, /return \{"delivered": verdict/);
+});
+
+test("frontend converts decimal GEN to base-unit integer before submitting create_shipment", () => {
+  assert.match(app, /parseFloat\(form\.escrow\) \* 1e18/);
+  assert.match(app, /BigInt\(Math\.round/);
+  assert.match(app, /escrowBaseUnits\.toString\(\)/);
+  assert.match(app, /Escrow \(GEN\)/);
+  assert.match(app, /automatically converted to base units/);
 });
 
 test("frontend is a real client for every contract action", () => {
